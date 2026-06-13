@@ -1,608 +1,592 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta http-equiv="Content-Style-Type" content="text/css">
-  <title></title>
-  <meta name="Generator" content="Cocoa HTML Writer">
-  <meta name="CocoaVersion" content="2685.6">
-  <style type="text/css">
-    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
-    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Attendance Check-In</title>
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --border:    #2a2e3f;
+      --accent:    #4f8ef7;
+      --accent2:   #34d399;
+      --danger:    #f87171;
+      --text:      #e8eaf0;
+      --muted:     #7b82a0;
+      --label:     #a0a8c0;
+      --radius:    14px;
+      --font:      'Inter', system-ui, sans-serif;
+    }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    /* ── Layout ── */
+    .shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px 48px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    .card-header {
+      padding: 28px 28px 22px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, #1a2240 0%, #1a1d27 100%);
+    }
+    .card-header .eyebrow {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    .card-header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .card-header p {
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ── Form Body ── */
+    .card-body {
+      padding: 24px 28px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ── Field ── */
+    .field { display: flex; flex-direction: column; gap: 7px; }
+    .field label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--label);
+    }
+    .field label .req { color: var(--accent); margin-left: 2px; }
+
+    select, input[type="text"] {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 15px;
+      font-family: var(--font);
+      appearance: none;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    select:focus, input[type="text"]:focus {
+      border-color: var(--accent);
+    }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237b82a0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 38px;
+      cursor: pointer;
+    }
+    select option { background: #1a1d27; }
+
+    /* ── GPS Strip ── */
+    .gps-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--muted);
+      transition: border-color 0.2s;
+    }
+    .gps-strip.ok   { border-color: var(--accent2); color: var(--accent2); }
+    .gps-strip.err  { border-color: var(--danger);  color: var(--danger);  }
+    .gps-strip.busy { border-color: var(--accent);  color: var(--accent);  }
+
+    .gps-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: currentColor; flex-shrink: 0;
+    }
+    .gps-strip.busy .gps-dot {
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    /* ── Camera ── */
+    .camera-wrap {
+      position: relative;
+      width: 100%;
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--bg);
+      border: 1px solid var(--border);
+    }
+    #videoEl {
+      width: 100%; display: block;
+      border-radius: var(--radius);
+    }
+    #canvasEl { display: none; }
+
+    .cam-overlay {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px; color: var(--muted);
+      font-size: 13px; text-align: center;
+      padding: 20px;
+    }
+    .cam-overlay svg { opacity: 0.4; }
+
+    #previewImg {
+      width: 100%; display: none;
+      border-radius: var(--radius);
+      border: 2px solid var(--accent2);
+    }
+
+    .cam-btn-row {
+      display: flex; gap: 10px; margin-top: 10px;
+    }
+    .cam-btn {
+      flex: 1; padding: 11px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px; font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .cam-btn:hover { background: #23273a; border-color: var(--accent); }
+    .cam-btn.primary {
+      background: var(--accent); border-color: var(--accent); color: #fff;
+    }
+    .cam-btn.primary:hover { background: #3a7de0; }
+    .cam-btn.retake {
+      background: transparent; border-color: var(--border); color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* ── Submit ── */
+    #submitBtn {
+      width: 100%;
+      padding: 15px;
+      border-radius: var(--radius);
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+      margin-top: 4px;
+    }
+    #submitBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #submitBtn:not(:disabled):hover { background: #3a7de0; }
+
+    /* ── Status / Toast ── */
+    #statusMsg {
+      font-size: 13px; text-align: center;
+      color: var(--muted); min-height: 18px;
+    }
+    #statusMsg.err { color: var(--danger); }
+    #statusMsg.ok  { color: var(--accent2); }
+
+    /* ── Success Screen ── */
+    #successScreen {
+      display: none;
+      text-align: center;
+      padding: 48px 28px;
+    }
+    .success-icon {
+      width: 72px; height: 72px;
+      background: rgba(52,211,153,0.12);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+    }
+    #successScreen h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    #successScreen p  { font-size: 14px; color: var(--muted); }
+    #successScreen .details {
+      margin-top: 20px; padding: 16px;
+      background: var(--bg); border-radius: var(--radius);
+      text-align: left; font-size: 13px; color: var(--label);
+      line-height: 1.9;
+    }
+    .another-btn {
+      display: inline-block; margin-top: 24px;
+      padding: 12px 28px; border-radius: var(--radius);
+      background: var(--border); color: var(--text);
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      border: none; font-family: var(--font);
+    }
+    .another-btn:hover { background: #2a2e3f; }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px; background: var(--border);
+      margin: 4px 0;
+    }
+
+    /* ── Mobile polish ── */
+    @media (max-width: 480px) {
+      .card-body { padding: 20px 18px 24px; }
+      .card-header { padding: 22px 18px 18px; }
+    }
   </style>
 </head>
 <body>
-<p class="p1">&lt;!DOCTYPE html&gt;</p>
-<p class="p1">&lt;html lang="en"&gt;</p>
-<p class="p1">&lt;head&gt;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>&lt;meta charset="UTF-8" /&gt;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" /&gt;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>&lt;title&gt;Attendance Check-In&lt;/title&gt;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>&lt;style&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>/* ── Reset &amp; Base ── */</p>
-<p class="p1"><span class="Apple-converted-space">    </span>*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>:root {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>--bg:<span class="Apple-converted-space">        </span>#0f1117;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>--surface: <span class="Apple-converted-space">  </span>#1a1d27;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>--border:<span class="Apple-converted-space">    </span>#2a2e3f;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>--accent:<span class="Apple-converted-space">    </span>#4f8ef7;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>--accent2: <span class="Apple-converted-space">  </span>#34d399;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>--danger:<span class="Apple-converted-space">    </span>#f87171;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>--text:<span class="Apple-converted-space">      </span>#e8eaf0;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>--muted: <span class="Apple-converted-space">    </span>#7b82a0;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>--label: <span class="Apple-converted-space">    </span>#a0a8c0;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>--radius:<span class="Apple-converted-space">    </span>14px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>--font:<span class="Apple-converted-space">      </span>'Inter', system-ui, sans-serif;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>html, body {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>min-height: 100%;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background: var(--bg);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>color: var(--text);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-family: var(--font);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-size: 15px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>line-height: 1.5;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>/* ── Layout ── */</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.shell {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>min-height: 100vh;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>display: flex;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>flex-direction: column;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>align-items: center;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>padding: 32px 16px 48px;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>.card {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>width: 100%;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>max-width: 480px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background: var(--surface);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border: 1px solid var(--border);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border-radius: 20px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>overflow: hidden;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>/* ── Header ── */</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.card-header {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>padding: 28px 28px 22px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border-bottom: 1px solid var(--border);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background: linear-gradient(135deg, #1a2240 0%, #1a1d27 100%);</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.card-header .eyebrow {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-size: 11px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-weight: 600;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>letter-spacing: 0.12em;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>text-transform: uppercase;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>color: var(--accent);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>margin-bottom: 6px;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.card-header h1 {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-size: 22px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-weight: 700;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>color: var(--text);</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.card-header p {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>margin-top: 4px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-size: 13px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>color: var(--muted);</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>/* ── Form Body ── */</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.card-body {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>padding: 24px 28px 28px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>display: flex;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>flex-direction: column;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>gap: 20px;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>/* ── Field ── */</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.field { display: flex; flex-direction: column; gap: 7px; }</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.field label {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-size: 12px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-weight: 600;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>letter-spacing: 0.06em;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>text-transform: uppercase;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>color: var(--label);</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.field label .req { color: var(--accent); margin-left: 2px; }</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>select, input[type="text"] {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>width: 100%;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>padding: 12px 16px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background: var(--bg);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border: 1px solid var(--border);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border-radius: var(--radius);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>color: var(--text);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-size: 15px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-family: var(--font);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>appearance: none;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>outline: none;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>transition: border-color 0.2s;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>select:focus, input[type="text"]:focus {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border-color: var(--accent);</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>select {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237b82a0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background-repeat: no-repeat;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background-position: right 14px center;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>padding-right: 38px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>cursor: pointer;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>select option { background: #1a1d27; }</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>/* ── GPS Strip ── */</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.gps-strip {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>display: flex;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>align-items: center;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>gap: 10px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>padding: 12px 16px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background: var(--bg);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border: 1px solid var(--border);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border-radius: var(--radius);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-size: 13px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>color: var(--muted);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>transition: border-color 0.2s;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.gps-strip.ok <span class="Apple-converted-space">  </span>{ border-color: var(--accent2); color: var(--accent2); }</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.gps-strip.err<span class="Apple-converted-space">  </span>{ border-color: var(--danger);<span class="Apple-converted-space">  </span>color: var(--danger);<span class="Apple-converted-space">  </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.gps-strip.busy { border-color: var(--accent);<span class="Apple-converted-space">  </span>color: var(--accent);<span class="Apple-converted-space">  </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>.gps-dot {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>width: 8px; height: 8px; border-radius: 50%;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background: currentColor; flex-shrink: 0;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.gps-strip.busy .gps-dot {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>animation: pulse 1s ease-in-out infinite;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>@keyframes pulse {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>0%, 100% { opacity: 1; transform: scale(1); }</p>
-<p class="p1"><span class="Apple-converted-space">      </span>50% <span class="Apple-converted-space">      </span>{ opacity: 0.4; transform: scale(0.7); }</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>/* ── Camera ── */</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.camera-wrap {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>position: relative;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>width: 100%;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border-radius: var(--radius);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>overflow: hidden;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background: var(--bg);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border: 1px solid var(--border);</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>#videoEl {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>width: 100%; display: block;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border-radius: var(--radius);</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>#canvasEl { display: none; }</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>.cam-overlay {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>position: absolute; inset: 0;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>display: flex; flex-direction: column;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>align-items: center; justify-content: center;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>gap: 12px; color: var(--muted);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-size: 13px; text-align: center;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>padding: 20px;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.cam-overlay svg { opacity: 0.4; }</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>#previewImg {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>width: 100%; display: none;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border-radius: var(--radius);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border: 2px solid var(--accent2);</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>.cam-btn-row {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>display: flex; gap: 10px; margin-top: 10px;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.cam-btn {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>flex: 1; padding: 11px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border-radius: var(--radius);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border: 1px solid var(--border);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background: var(--bg);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>color: var(--text);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-size: 14px; font-weight: 600;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>cursor: pointer;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>transition: background 0.15s, border-color 0.15s;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.cam-btn:hover { background: #23273a; border-color: var(--accent); }</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.cam-btn.primary {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background: var(--accent); border-color: var(--accent); color: #fff;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.cam-btn.primary:hover { background: #3a7de0; }</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.cam-btn.retake {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background: transparent; border-color: var(--border); color: var(--muted);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-size: 13px;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>/* ── Submit ── */</p>
-<p class="p1"><span class="Apple-converted-space">    </span>#submitBtn {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>width: 100%;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>padding: 15px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border-radius: var(--radius);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border: none;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background: var(--accent);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>color: #fff;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-size: 16px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-weight: 700;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-family: var(--font);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>cursor: pointer;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>transition: background 0.15s, opacity 0.15s;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>margin-top: 4px;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>#submitBtn:disabled { opacity: 0.4; cursor: not-allowed; }</p>
-<p class="p1"><span class="Apple-converted-space">    </span>#submitBtn:not(:disabled):hover { background: #3a7de0; }</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>/* ── Status / Toast ── */</p>
-<p class="p1"><span class="Apple-converted-space">    </span>#statusMsg {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-size: 13px; text-align: center;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>color: var(--muted); min-height: 18px;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>#statusMsg.err { color: var(--danger); }</p>
-<p class="p1"><span class="Apple-converted-space">    </span>#statusMsg.ok<span class="Apple-converted-space">  </span>{ color: var(--accent2); }</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>/* ── Success Screen ── */</p>
-<p class="p1"><span class="Apple-converted-space">    </span>#successScreen {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>display: none;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>text-align: center;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>padding: 48px 28px;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.success-icon {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>width: 72px; height: 72px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background: rgba(52,211,153,0.12);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border-radius: 50%;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>display: flex; align-items: center; justify-content: center;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>margin: 0 auto 20px;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>#successScreen h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }</p>
-<p class="p1"><span class="Apple-converted-space">    </span>#successScreen p<span class="Apple-converted-space">  </span>{ font-size: 14px; color: var(--muted); }</p>
-<p class="p1"><span class="Apple-converted-space">    </span>#successScreen .details {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>margin-top: 20px; padding: 16px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background: var(--bg); border-radius: var(--radius);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>text-align: left; font-size: 13px; color: var(--label);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>line-height: 1.9;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.another-btn {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>display: inline-block; margin-top: 24px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>padding: 12px 28px; border-radius: var(--radius);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>background: var(--border); color: var(--text);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>font-size: 14px; font-weight: 600; cursor: pointer;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>border: none; font-family: var(--font);</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.another-btn:hover { background: #2a2e3f; }</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>/* ── Divider ── */</p>
-<p class="p1"><span class="Apple-converted-space">    </span>.divider {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>height: 1px; background: var(--border);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>margin: 4px 0;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>/* ── Mobile polish ── */</p>
-<p class="p1"><span class="Apple-converted-space">    </span>@media (max-width: 480px) {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>.card-body { padding: 20px 18px 24px; }</p>
-<p class="p1"><span class="Apple-converted-space">      </span>.card-header { padding: 22px 18px 18px; }</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">  </span>&lt;/style&gt;</p>
-<p class="p1">&lt;/head&gt;</p>
-<p class="p1">&lt;body&gt;</p>
-<p class="p1">&lt;div class="shell"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>&lt;div class="card"&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- Header --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="card-header"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="eyebrow"&gt;Staff Portal&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;h1&gt;Attendance Check-In&lt;/h1&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;p&gt;All fields are required before submitting.&lt;/p&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- Form --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="card-body" id="formBody"&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;!-- Clock In / Out --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="field"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Clock In / Out &lt;span class="req"&gt;*&lt;/span&gt;&lt;/label&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;select id="clockType"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option value=""&gt;— Select —&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option value="Clock In"&gt;Clock In&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option value="Clock Out"&gt;Clock Out&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;/select&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;!-- Name --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="field"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Your Name &lt;span class="req"&gt;*&lt;/span&gt;&lt;/label&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;select id="workerName"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option value=""&gt;— Select your name —&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;Jacky Liew Zhen Hoong&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;Jiang Cui Cui&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;Khoo Wei Kuok&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;Phoi Jia You&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;Roland Lam Kuang Seng&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;Sit Wei Xian&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;Tan Guan Pin&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;Tay Chai Soon&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;Teh Chong Seong&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;Wong Chih Leng&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;Wu Hui Qing&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;Yap Siew Lan&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;/select&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;!-- Outlet --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="field"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Outlet &lt;span class="req"&gt;*&lt;/span&gt;&lt;/label&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;select id="outlet"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option value=""&gt;— Select outlet —&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;139TP&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;221BLP&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;653PD&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;PPC&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;option&gt;GWV&lt;/option&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;/select&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="divider"&gt;&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;!-- GPS Location --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="field"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Current Location &lt;span class="req"&gt;*&lt;/span&gt;&lt;/label&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="gps-strip busy" id="gpsStrip"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;span class="gps-dot"&gt;&lt;/span&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;span id="gpsText"&gt;Detecting your location…&lt;/span&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;!-- Selfie --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="field"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Selfie Photo &lt;span class="req"&gt;*&lt;/span&gt;&lt;/label&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="camera-wrap" id="cameraWrap"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;video id="videoEl" autoplay playsinline muted&gt;&lt;/video&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;img id="previewImg" alt="Your selfie" /&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;div class="cam-overlay" id="camOverlay"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">              </span>&lt;path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/&gt;</p>
-<p class="p1"><span class="Apple-converted-space">              </span>&lt;circle cx="12" cy="13" r="4"/&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;/svg&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;span&gt;Tap "Start Camera" to take your selfie&lt;/span&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;canvas id="canvasEl"&gt;&lt;/canvas&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="cam-btn-row" id="camBtnRow"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;button class="cam-btn primary" id="startCamBtn" onclick="startCamera()"&gt;Start Camera&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="divider"&gt;&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;!-- Submit --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div id="statusMsg"&gt;&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;button id="submitBtn" disabled onclick="submitForm()"&gt;Submit Attendance&lt;/button&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;&lt;!-- /card-body --&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- Success screen (hidden until submission) --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="successScreen"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="success-icon"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">          </span>&lt;polyline points="20 6 9 17 4 12"/&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;/svg&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;h2&gt;Attendance Recorded&lt;/h2&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;p&gt;Your submission has been saved successfully.&lt;/p&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="details" id="successDetails"&gt;&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;button class="another-btn" onclick="resetForm()"&gt;Submit Another&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">  </span>&lt;/div&gt;&lt;!-- /card --&gt;</p>
-<p class="p1">&lt;/div&gt;&lt;!-- /shell --&gt;</p>
-<p class="p2"><br></p>
-<p class="p1">&lt;script&gt;</p>
-<p class="p1">// ── CONFIG — paste your Apps Script Web App URL here ──────────</p>
-<p class="p1">const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx7LvEgu1N6kGqlfyLtCNC5Da5we4zcquWPKNP-us4qRU86tH6QtmYQv6EgKPpaRSop/exec";</p>
-<p class="p1">// ─────────────────────────────────────────────────────────────</p>
-<p class="p2"><br></p>
-<p class="p1">let gpsData <span class="Apple-converted-space">  </span>= null; <span class="Apple-converted-space">  </span>// { latitude, longitude, accuracy }</p>
-<p class="p1">let photoData = null; <span class="Apple-converted-space">  </span>// base64 JPEG string</p>
-<p class="p1">let stream<span class="Apple-converted-space">    </span>= null; <span class="Apple-converted-space">  </span>// MediaStream</p>
-<p class="p2"><br></p>
-<p class="p1">// ── GPS ───────────────────────────────────────────────────────</p>
-<p class="p1">function getLocation() {</p>
-<p class="p1"><span class="Apple-converted-space">  </span>if (!navigator.geolocation) {</p>
-<p class="p1"><span class="Apple-converted-space">    </span>setGps("err", "Geolocation not supported by this browser.");</p>
-<p class="p1"><span class="Apple-converted-space">    </span>return;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>}</p>
-<p class="p1"><span class="Apple-converted-space">  </span>setGps("busy", "Detecting your location…");</p>
-<p class="p1"><span class="Apple-converted-space">  </span>navigator.geolocation.getCurrentPosition(</p>
-<p class="p1"><span class="Apple-converted-space">    </span>pos =&gt; {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>gpsData = {</p>
-<p class="p1"><span class="Apple-converted-space">        </span>latitude:<span class="Apple-converted-space">  </span>pos.coords.latitude.toFixed(6),</p>
-<p class="p1"><span class="Apple-converted-space">        </span>longitude: pos.coords.longitude.toFixed(6),</p>
-<p class="p1"><span class="Apple-converted-space">        </span>accuracy:<span class="Apple-converted-space">  </span>Math.round(pos.coords.accuracy)</p>
-<p class="p1"><span class="Apple-converted-space">      </span>};</p>
-<p class="p1"><span class="Apple-converted-space">      </span>setGps("ok", `📍 ${gpsData.latitude}, ${gpsData.longitude}<span class="Apple-converted-space">  </span>(±${gpsData.accuracy} m)`);</p>
-<p class="p1"><span class="Apple-converted-space">      </span>checkReady();</p>
-<p class="p1"><span class="Apple-converted-space">    </span>},</p>
-<p class="p1"><span class="Apple-converted-space">    </span>err =&gt; {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>const msgs = {</p>
-<p class="p1"><span class="Apple-converted-space">        </span>1: "Location access denied. Please allow location in your browser settings, then reload.",</p>
-<p class="p1"><span class="Apple-converted-space">        </span>2: "Location unavailable. Move to an area with better signal.",</p>
-<p class="p1"><span class="Apple-converted-space">        </span>3: "Location request timed out. Please reload and try again."</p>
-<p class="p1"><span class="Apple-converted-space">      </span>};</p>
-<p class="p1"><span class="Apple-converted-space">      </span>setGps("err", msgs[err.code] || "Location error.");</p>
-<p class="p1"><span class="Apple-converted-space">    </span>},</p>
-<p class="p1"><span class="Apple-converted-space">    </span>{ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }</p>
-<p class="p1"><span class="Apple-converted-space">  </span>);</p>
-<p class="p1">}</p>
-<p class="p2"><br></p>
-<p class="p1">function setGps(state, text) {</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const strip = document.getElementById("gpsStrip");</p>
-<p class="p1"><span class="Apple-converted-space">  </span>strip.className = "gps-strip " + state;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>document.getElementById("gpsText").textContent = text;</p>
-<p class="p1">}</p>
-<p class="p2"><br></p>
-<p class="p1">// ── Camera ───────────────────────────────────────────────────</p>
-<p class="p1">async function startCamera() {</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const btn = document.getElementById("startCamBtn");</p>
-<p class="p1"><span class="Apple-converted-space">  </span>btn.disabled = true;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>btn.textContent = "Starting…";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>try {</p>
-<p class="p1"><span class="Apple-converted-space">    </span>stream = await navigator.mediaDevices.getUserMedia({</p>
-<p class="p1"><span class="Apple-converted-space">      </span>video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 640 } },</p>
-<p class="p1"><span class="Apple-converted-space">      </span>audio: false</p>
-<p class="p1"><span class="Apple-converted-space">    </span>});</p>
-<p class="p1"><span class="Apple-converted-space">    </span>const video = document.getElementById("videoEl");</p>
-<p class="p1"><span class="Apple-converted-space">    </span>video.srcObject = stream;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>document.getElementById("camOverlay").style.display = "none";</p>
-<p class="p1"><span class="Apple-converted-space">    </span>document.getElementById("camBtnRow").innerHTML = `</p>
-<p class="p1"><span class="Apple-converted-space">      </span>&lt;button class="cam-btn primary" onclick="capturePhoto()"&gt;📸 Take Selfie&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>`;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>} catch (e) {</p>
-<p class="p1"><span class="Apple-converted-space">    </span>btn.disabled = false;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>btn.textContent = "Start Camera";</p>
-<p class="p1"><span class="Apple-converted-space">    </span>setStatus("err", "Camera access denied. Please allow camera and reload.");</p>
-<p class="p1"><span class="Apple-converted-space">  </span>}</p>
-<p class="p1">}</p>
-<p class="p2"><br></p>
-<p class="p1">function capturePhoto() {</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const video<span class="Apple-converted-space">  </span>= document.getElementById("videoEl");</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const canvas = document.getElementById("canvasEl");</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const size <span class="Apple-converted-space">  </span>= Math.min(video.videoWidth, video.videoHeight);</p>
-<p class="p1"><span class="Apple-converted-space">  </span>canvas.width<span class="Apple-converted-space">  </span>= size;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>canvas.height = size;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const ctx = canvas.getContext("2d");</p>
-<p class="p1"><span class="Apple-converted-space">  </span>// Centre-crop to square</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const sx = (video.videoWidth<span class="Apple-converted-space">  </span>- size) / 2;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const sy = (video.videoHeight - size) / 2;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>ctx.drawImage(video, sx, sy, size, size, 0, 0, size, size);</p>
-<p class="p1"><span class="Apple-converted-space">  </span>photoData = canvas.toDataURL("image/jpeg", 0.8);</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">  </span>// Show preview, stop stream</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const preview = document.getElementById("previewImg");</p>
-<p class="p1"><span class="Apple-converted-space">  </span>preview.src = photoData;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>preview.style.display = "block";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>video.style.display = "none";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>stopStream();</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">  </span>document.getElementById("camBtnRow").innerHTML = `</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;button class="cam-btn retake" onclick="retakePhoto()"&gt;↩ Retake&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>`;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>checkReady();</p>
-<p class="p1">}</p>
-<p class="p2"><br></p>
-<p class="p1">function retakePhoto() {</p>
-<p class="p1"><span class="Apple-converted-space">  </span>photoData = null;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const preview = document.getElementById("previewImg");</p>
-<p class="p1"><span class="Apple-converted-space">  </span>preview.style.display = "none";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>preview.src = "";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const video = document.getElementById("videoEl");</p>
-<p class="p1"><span class="Apple-converted-space">  </span>video.style.display = "block";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>document.getElementById("camBtnRow").innerHTML = `</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;button class="cam-btn primary" onclick="startCamera()"&gt;Start Camera&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>`;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>document.getElementById("camOverlay").style.display = "flex";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>checkReady();</p>
-<p class="p1">}</p>
-<p class="p2"><br></p>
-<p class="p1">function stopStream() {</p>
-<p class="p1"><span class="Apple-converted-space">  </span>if (stream) { stream.getTracks().forEach(t =&gt; t.stop()); stream = null; }</p>
-<p class="p1">}</p>
-<p class="p2"><br></p>
-<p class="p1">// ── Validation ───────────────────────────────────────────────</p>
-<p class="p1">function checkReady() {</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const ok =</p>
-<p class="p1"><span class="Apple-converted-space">    </span>document.getElementById("clockType").value &amp;&amp;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>document.getElementById("workerName").value &amp;&amp;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>document.getElementById("outlet").value &amp;&amp;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>gpsData &amp;&amp; photoData;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>document.getElementById("submitBtn").disabled = !ok;</p>
-<p class="p1">}</p>
-<p class="p2"><br></p>
-<p class="p1">// Run checkReady whenever a dropdown changes</p>
-<p class="p1">document.addEventListener("DOMContentLoaded", () =&gt; {</p>
-<p class="p1"><span class="Apple-converted-space">  </span>["clockType","workerName","outlet"].forEach(id =&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>document.getElementById(id).addEventListener("change", checkReady)</p>
-<p class="p1"><span class="Apple-converted-space">  </span>);</p>
-<p class="p1"><span class="Apple-converted-space">  </span>getLocation();</p>
-<p class="p1">});</p>
-<p class="p2"><br></p>
-<p class="p1">// ── Submit ────────────────────────────────────────────────────</p>
-<p class="p1">async function submitForm() {</p>
-<p class="p1"><span class="Apple-converted-space">  </span>if (!gpsData || !photoData) return;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">  </span>const btn = document.getElementById("submitBtn");</p>
-<p class="p1"><span class="Apple-converted-space">  </span>btn.disabled = true;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>btn.textContent = "Submitting…";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>setStatus("", "Uploading — please wait…");</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">  </span>const payload = {</p>
-<p class="p1"><span class="Apple-converted-space">    </span>timestamp: new Date().toLocaleString("en-SG", { timeZone: "Asia/Singapore" }),</p>
-<p class="p1"><span class="Apple-converted-space">    </span>name:<span class="Apple-converted-space">      </span>document.getElementById("workerName").value,</p>
-<p class="p1"><span class="Apple-converted-space">    </span>outlet:<span class="Apple-converted-space">    </span>document.getElementById("outlet").value,</p>
-<p class="p1"><span class="Apple-converted-space">    </span>clockType: document.getElementById("clockType").value,</p>
-<p class="p1"><span class="Apple-converted-space">    </span>latitude:<span class="Apple-converted-space">  </span>gpsData.latitude,</p>
-<p class="p1"><span class="Apple-converted-space">    </span>longitude: gpsData.longitude,</p>
-<p class="p1"><span class="Apple-converted-space">    </span>accuracy:<span class="Apple-converted-space">  </span>gpsData.accuracy,</p>
-<p class="p1"><span class="Apple-converted-space">    </span>photo: <span class="Apple-converted-space">    </span>photoData</p>
-<p class="p1"><span class="Apple-converted-space">  </span>};</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">  </span>try {</p>
-<p class="p1"><span class="Apple-converted-space">    </span>const res<span class="Apple-converted-space">  </span>= await fetch(SCRIPT_URL, {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>method: "POST",</p>
-<p class="p1"><span class="Apple-converted-space">      </span>body: JSON.stringify(payload)</p>
-<p class="p1"><span class="Apple-converted-space">    </span>});</p>
-<p class="p1"><span class="Apple-converted-space">    </span>const json = await res.json();</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>if (json.success) {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>showSuccess(payload);</p>
-<p class="p1"><span class="Apple-converted-space">    </span>} else {</p>
-<p class="p1"><span class="Apple-converted-space">      </span>throw new Error(json.error || "Unknown error");</p>
-<p class="p1"><span class="Apple-converted-space">    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">  </span>} catch (err) {</p>
-<p class="p1"><span class="Apple-converted-space">    </span>setStatus("err", "Submission failed: " + err.message);</p>
-<p class="p1"><span class="Apple-converted-space">    </span>btn.disabled = false;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>btn.textContent = "Submit Attendance";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>}</p>
-<p class="p1">}</p>
-<p class="p2"><br></p>
-<p class="p1">function showSuccess(p) {</p>
-<p class="p1"><span class="Apple-converted-space">  </span>document.getElementById("formBody").style.display<span class="Apple-converted-space">    </span>= "none";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>document.getElementById("successScreen").style.display = "block";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>document.getElementById("successDetails").innerHTML = `</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;strong&gt;Name:&lt;/strong&gt; ${p.name}&lt;br&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;strong&gt;Outlet:&lt;/strong&gt; ${p.outlet}&lt;br&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;strong&gt;Type:&lt;/strong&gt; ${p.clockType}&lt;br&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;strong&gt;Time:&lt;/strong&gt; ${p.timestamp}&lt;br&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;strong&gt;Location:&lt;/strong&gt; ${p.latitude}, ${p.longitude} (±${p.accuracy} m)</p>
-<p class="p1"><span class="Apple-converted-space">  </span>`;</p>
-<p class="p1">}</p>
-<p class="p2"><br></p>
-<p class="p1">function resetForm() {</p>
-<p class="p1"><span class="Apple-converted-space">  </span>document.getElementById("formBody").style.display<span class="Apple-converted-space">    </span>= "flex";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>document.getElementById("successScreen").style.display = "none";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>["clockType","workerName","outlet"].forEach(id =&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>document.getElementById(id).value = ""</p>
-<p class="p1"><span class="Apple-converted-space">  </span>);</p>
-<p class="p1"><span class="Apple-converted-space">  </span>photoData = null;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const preview = document.getElementById("previewImg");</p>
-<p class="p1"><span class="Apple-converted-space">  </span>preview.style.display = "none";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>preview.src = "";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>document.getElementById("videoEl").style.display = "block";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>document.getElementById("camOverlay").style.display = "flex";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>document.getElementById("camBtnRow").innerHTML =</p>
-<p class="p1"><span class="Apple-converted-space">    </span>`&lt;button class="cam-btn primary" id="startCamBtn" onclick="startCamera()"&gt;Start Camera&lt;/button&gt;`;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>document.getElementById("submitBtn").disabled = true;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>document.getElementById("submitBtn").textContent = "Submit Attendance";</p>
-<p class="p1"><span class="Apple-converted-space">  </span>setStatus("", "");</p>
-<p class="p1"><span class="Apple-converted-space">  </span>getLocation();</p>
-<p class="p1">}</p>
-<p class="p2"><br></p>
-<p class="p1">function setStatus(type, msg) {</p>
-<p class="p1"><span class="Apple-converted-space">  </span>const el = document.getElementById("statusMsg");</p>
-<p class="p1"><span class="Apple-converted-space">  </span>el.className = type;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>el.textContent = msg;</p>
-<p class="p1">}</p>
-<p class="p1">&lt;/script&gt;</p>
-<p class="p1">&lt;/body&gt;</p>
-<p class="p1">&lt;/html&gt;</p>
+<div class="shell">
+  <div class="card">
+
+    <!-- Header -->
+    <div class="card-header">
+      <div class="eyebrow">Staff Portal</div>
+      <h1>Attendance Check-In</h1>
+      <p>All fields are required before submitting.</p>
+    </div>
+
+    <!-- Form -->
+    <div class="card-body" id="formBody">
+
+      <!-- Clock In / Out -->
+      <div class="field">
+        <label>Clock In / Out <span class="req">*</span></label>
+        <select id="clockType">
+          <option value="">— Select —</option>
+          <option value="Clock In">Clock In</option>
+          <option value="Clock Out">Clock Out</option>
+        </select>
+      </div>
+
+      <!-- Name -->
+      <div class="field">
+        <label>Your Name <span class="req">*</span></label>
+        <select id="workerName">
+          <option value="">— Select your name —</option>
+          <option>Jacky Liew Zhen Hoong</option>
+          <option>Jiang Cui Cui</option>
+          <option>Khoo Wei Kuok</option>
+          <option>Phoi Jia You</option>
+          <option>Roland Lam Kuang Seng</option>
+          <option>Sit Wei Xian</option>
+          <option>Tan Guan Pin</option>
+          <option>Tay Chai Soon</option>
+          <option>Teh Chong Seong</option>
+          <option>Wong Chih Leng</option>
+          <option>Wu Hui Qing</option>
+          <option>Yap Siew Lan</option>
+        </select>
+      </div>
+
+      <!-- Outlet -->
+      <div class="field">
+        <label>Outlet <span class="req">*</span></label>
+        <select id="outlet">
+          <option value="">— Select outlet —</option>
+          <option>139TP</option>
+          <option>221BLP</option>
+          <option>653PD</option>
+          <option>PPC</option>
+          <option>GWV</option>
+        </select>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- GPS Location -->
+      <div class="field">
+        <label>Current Location <span class="req">*</span></label>
+        <div class="gps-strip busy" id="gpsStrip">
+          <span class="gps-dot"></span>
+          <span id="gpsText">Detecting your location…</span>
+        </div>
+      </div>
+
+      <!-- Selfie -->
+      <div class="field">
+        <label>Selfie Photo <span class="req">*</span></label>
+        <div class="camera-wrap" id="cameraWrap">
+          <video id="videoEl" autoplay playsinline muted></video>
+          <img id="previewImg" alt="Your selfie" />
+          <div class="cam-overlay" id="camOverlay">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            <span>Tap "Start Camera" to take your selfie</span>
+          </div>
+        </div>
+        <canvas id="canvasEl"></canvas>
+        <div class="cam-btn-row" id="camBtnRow">
+          <button class="cam-btn primary" id="startCamBtn" onclick="startCamera()">Start Camera</button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Submit -->
+      <div id="statusMsg"></div>
+      <button id="submitBtn" disabled onclick="submitForm()">Submit Attendance</button>
+
+    </div><!-- /card-body -->
+
+    <!-- Success screen (hidden until submission) -->
+    <div id="successScreen">
+      <div class="success-icon">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <h2>Attendance Recorded</h2>
+      <p>Your submission has been saved successfully.</p>
+      <div class="details" id="successDetails"></div>
+      <button class="another-btn" onclick="resetForm()">Submit Another</button>
+    </div>
+
+  </div><!-- /card -->
+</div><!-- /shell -->
+
+<script>
+// ── CONFIG — paste your Apps Script Web App URL here ──────────
+const SCRIPT_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+// ─────────────────────────────────────────────────────────────
+
+let gpsData   = null;   // { latitude, longitude, accuracy }
+let photoData = null;   // base64 JPEG string
+let stream    = null;   // MediaStream
+
+// ── GPS ───────────────────────────────────────────────────────
+function getLocation() {
+  if (!navigator.geolocation) {
+    setGps("err", "Geolocation not supported by this browser.");
+    return;
+  }
+  setGps("busy", "Detecting your location…");
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      gpsData = {
+        latitude:  pos.coords.latitude.toFixed(6),
+        longitude: pos.coords.longitude.toFixed(6),
+        accuracy:  Math.round(pos.coords.accuracy)
+      };
+      setGps("ok", `📍 ${gpsData.latitude}, ${gpsData.longitude}  (±${gpsData.accuracy} m)`);
+      checkReady();
+    },
+    err => {
+      const msgs = {
+        1: "Location access denied. Please allow location in your browser settings, then reload.",
+        2: "Location unavailable. Move to an area with better signal.",
+        3: "Location request timed out. Please reload and try again."
+      };
+      setGps("err", msgs[err.code] || "Location error.");
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
+
+function setGps(state, text) {
+  const strip = document.getElementById("gpsStrip");
+  strip.className = "gps-strip " + state;
+  document.getElementById("gpsText").textContent = text;
+}
+
+// ── Camera ───────────────────────────────────────────────────
+async function startCamera() {
+  const btn = document.getElementById("startCamBtn");
+  btn.disabled = true;
+  btn.textContent = "Starting…";
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 640 } },
+      audio: false
+    });
+    const video = document.getElementById("videoEl");
+    video.srcObject = stream;
+    document.getElementById("camOverlay").style.display = "none";
+    document.getElementById("camBtnRow").innerHTML = `
+      <button class="cam-btn primary" onclick="capturePhoto()">📸 Take Selfie</button>
+    `;
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = "Start Camera";
+    setStatus("err", "Camera access denied. Please allow camera and reload.");
+  }
+}
+
+function capturePhoto() {
+  const video  = document.getElementById("videoEl");
+  const canvas = document.getElementById("canvasEl");
+  const size   = Math.min(video.videoWidth, video.videoHeight);
+  canvas.width  = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  // Centre-crop to square
+  const sx = (video.videoWidth  - size) / 2;
+  const sy = (video.videoHeight - size) / 2;
+  ctx.drawImage(video, sx, sy, size, size, 0, 0, size, size);
+  photoData = canvas.toDataURL("image/jpeg", 0.8);
+
+  // Show preview, stop stream
+  const preview = document.getElementById("previewImg");
+  preview.src = photoData;
+  preview.style.display = "block";
+  video.style.display = "none";
+  stopStream();
+
+  document.getElementById("camBtnRow").innerHTML = `
+    <button class="cam-btn retake" onclick="retakePhoto()">↩ Retake</button>
+  `;
+  checkReady();
+}
+
+function retakePhoto() {
+  photoData = null;
+  const preview = document.getElementById("previewImg");
+  preview.style.display = "none";
+  preview.src = "";
+  const video = document.getElementById("videoEl");
+  video.style.display = "block";
+  document.getElementById("camBtnRow").innerHTML = `
+    <button class="cam-btn primary" onclick="startCamera()">Start Camera</button>
+  `;
+  document.getElementById("camOverlay").style.display = "flex";
+  checkReady();
+}
+
+function stopStream() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+}
+
+// ── Validation ───────────────────────────────────────────────
+function checkReady() {
+  const ok =
+    document.getElementById("clockType").value &&
+    document.getElementById("workerName").value &&
+    document.getElementById("outlet").value &&
+    gpsData && photoData;
+  document.getElementById("submitBtn").disabled = !ok;
+}
+
+// Run checkReady whenever a dropdown changes
+document.addEventListener("DOMContentLoaded", () => {
+  ["clockType","workerName","outlet"].forEach(id =>
+    document.getElementById(id).addEventListener("change", checkReady)
+  );
+  getLocation();
+});
+
+// ── Submit ────────────────────────────────────────────────────
+async function submitForm() {
+  if (!gpsData || !photoData) return;
+
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true;
+  btn.textContent = "Submitting…";
+  setStatus("", "Uploading — please wait…");
+
+  const payload = {
+    timestamp: new Date().toLocaleString("en-SG", { timeZone: "Asia/Singapore" }),
+    name:      document.getElementById("workerName").value,
+    outlet:    document.getElementById("outlet").value,
+    clockType: document.getElementById("clockType").value,
+    latitude:  gpsData.latitude,
+    longitude: gpsData.longitude,
+    accuracy:  gpsData.accuracy,
+    photo:     photoData
+  };
+
+  try {
+    const res  = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+
+    if (json.success) {
+      showSuccess(payload);
+    } else {
+      throw new Error(json.error || "Unknown error");
+    }
+  } catch (err) {
+    setStatus("err", "Submission failed: " + err.message);
+    btn.disabled = false;
+    btn.textContent = "Submit Attendance";
+  }
+}
+
+function showSuccess(p) {
+  document.getElementById("formBody").style.display    = "none";
+  document.getElementById("successScreen").style.display = "block";
+  document.getElementById("successDetails").innerHTML = `
+    <strong>Name:</strong> ${p.name}<br>
+    <strong>Outlet:</strong> ${p.outlet}<br>
+    <strong>Type:</strong> ${p.clockType}<br>
+    <strong>Time:</strong> ${p.timestamp}<br>
+    <strong>Location:</strong> ${p.latitude}, ${p.longitude} (±${p.accuracy} m)
+  `;
+}
+
+function resetForm() {
+  document.getElementById("formBody").style.display    = "flex";
+  document.getElementById("successScreen").style.display = "none";
+  ["clockType","workerName","outlet"].forEach(id =>
+    document.getElementById(id).value = ""
+  );
+  photoData = null;
+  const preview = document.getElementById("previewImg");
+  preview.style.display = "none";
+  preview.src = "";
+  document.getElementById("videoEl").style.display = "block";
+  document.getElementById("camOverlay").style.display = "flex";
+  document.getElementById("camBtnRow").innerHTML =
+    `<button class="cam-btn primary" id="startCamBtn" onclick="startCamera()">Start Camera</button>`;
+  document.getElementById("submitBtn").disabled = true;
+  document.getElementById("submitBtn").textContent = "Submit Attendance";
+  setStatus("", "");
+  getLocation();
+}
+
+function setStatus(type, msg) {
+  const el = document.getElementById("statusMsg");
+  el.className = type;
+  el.textContent = msg;
+}
+</script>
 </body>
 </html>
